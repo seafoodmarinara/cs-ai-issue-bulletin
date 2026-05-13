@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS AI Issue Bulletin · #cs-ai-issue-reporting</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #fbfaf6;
+  --ink: #1a1f24;
+  --ink-soft: #5a5f66;
+  --ink-faint: #8a8f95;
+  --rule: rgba(0,0,0,0.07);
+  --card-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+  --card-shadow-hover: 0 4px 8px rgba(0,0,0,0.06), 0 16px 36px rgba(0,0,0,0.10);
+
+  /* Pastel paper colors */
+  --paper-open: #fef9c3;
+  --paper-partial: #fed7aa;
+  --paper-resolved: #d1fae5;
+  --paper-urgent: #fecaca;
+  --paper-info: #e0e7ff;
+
+  /* Status pill text colors */
+  --pill-open: #854d0e;
+  --pill-partial: #9a3412;
+  --pill-resolved: #166534;
+  --pill-urgent: #991b1b;
+  --pill-info: #3730a3;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg);
+  /* Subtle paper grain — SVG fractal noise at very low opacity */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.035 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
+    radial-gradient(circle at 17% 23%, rgba(0,0,0,0.012) 1px, transparent 2px),
+    radial-gradient(circle at 73% 67%, rgba(0,0,0,0.010) 1px, transparent 2px);
+  background-size: 180px 180px, 13px 13px, 17px 17px;
+  background-attachment: fixed;
+  color: var(--ink);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv11";
+}
+
+.page { max-width: 1380px; margin: 0 auto; padding: 48px 32px 80px; }
+
+/* Header */
+.page-header { margin-bottom: 36px; }
+.page-header h1 {
+  margin: 0 0 6px 0;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.subtitle {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  letter-spacing: 0.01em;
+}
+.subtitle .sep { margin: 0 8px; color: var(--ink-faint); }
+.stat-line {
+  margin: 14px 0 0 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+.stat-line strong { color: var(--ink); font-weight: 600; }
+.stat-line .dot { color: var(--ink-faint); margin: 0 6px; }
+
+/* Controls — minimalist */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+.search-box {
+  flex: 1;
+  min-width: 200px;
+  max-width: 320px;
+  padding: 8px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--ink);
+}
+.search-box::placeholder { color: var(--ink-faint); }
+.search-box:focus {
+  outline: none;
+  border-color: var(--ink-soft);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.04);
+}
+
+.chip-group { display: flex; gap: 4px; }
+.chip {
+  padding: 6px 12px;
+  border: 1px solid var(--rule);
+  background: transparent;
+  border-radius: 999px;
+  font-size: 12.5px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+.chip:hover { color: var(--ink); border-color: rgba(0,0,0,0.15); }
+.chip.active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.sort-select {
+  padding: 6px 28px 6px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  font-size: 12.5px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%235a5f66' d='M5 6L0 0h10z'/%3E%3C/svg%3E") no-repeat right 10px center;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--ink);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* Board — masonry via CSS columns */
+.board {
+  column-count: 3;
+  column-gap: 24px;
+}
+@media (max-width: 1080px) { .board { column-count: 2; } }
+@media (max-width: 680px) { .board { column-count: 1; } }
+
+/* Sticky note */
+.note {
+  background: var(--paper-open);
+  border-radius: 6px;
+  padding: 20px 22px;
+  margin: 0 0 24px 0;
+  box-shadow: var(--card-shadow);
+  break-inside: avoid;
+  display: inline-block;
+  width: 100%;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(.2,.7,.3,1), box-shadow 0.2s ease;
+  position: relative;
+}
+.note.color-open { background: var(--paper-open); }
+.note.color-partial { background: var(--paper-partial); }
+.note.color-resolved { background: var(--paper-resolved); }
+.note.color-urgent { background: var(--paper-urgent); }
+.note.color-info { background: var(--paper-info); }
+
+.note.is-resolved {
+  opacity: 0.72;
+}
+.note:hover {
+  transform: rotate(0deg) translateY(-2px) !important;
+  box-shadow: var(--card-shadow-hover);
+  opacity: 1;
+  z-index: 2;
+}
+.note.expanded {
+  transform: rotate(0deg) !important;
+  box-shadow: var(--card-shadow-hover);
+  opacity: 1;
+  z-index: 3;
+}
+
+/* Note head */
+.note-head { display: flex; gap: 10px; align-items: flex-start; }
+.note-title {
+  flex: 1;
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+  line-height: 1.35;
+}
+.note-pill {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.55);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.note.color-open .note-pill { color: var(--pill-open); }
+.note.color-partial .note-pill { color: var(--pill-partial); }
+.note.color-resolved .note-pill { color: var(--pill-resolved); }
+.note.color-urgent .note-pill { color: var(--pill-urgent); }
+.note.color-info .note-pill { color: var(--pill-info); }
+
+/* Note meta line */
+.note-meta {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(0,0,0,0.55);
+}
+.note-meta .meta-dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(0,0,0,0.3); }
+.note-meta .count {
+  font-weight: 600;
+  color: rgba(0,0,0,0.7);
+}
+
+/* Note body - hidden by default, shown when expanded */
+.note-body {
+  display: none;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0,0,0,0.08);
+}
+.note.expanded .note-body { display: block; }
+
+.note-desc {
+  font-size: 13.5px;
+  color: rgba(0,0,0,0.78);
+  line-height: 1.5;
+  margin: 0 0 14px 0;
+}
+
+.fix-section {
+  background: rgba(255,255,255,0.5);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+.fix-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(0,0,0,0.55);
+  display: block;
+  margin-bottom: 4px;
+}
+.fix-text {
+  font-size: 13px;
+  color: rgba(0,0,0,0.8);
+  line-height: 1.5;
+}
+
+.reports {
+  border-top: 1px dashed rgba(0,0,0,0.12);
+  padding-top: 12px;
+  margin-top: 4px;
+}
+.reports-heading {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: rgba(0,0,0,0.5);
+  margin-bottom: 8px;
+}
+.report-row {
+  font-size: 12.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 0;
+  border-bottom: 1px dotted rgba(0,0,0,0.08);
+}
+.report-row:last-child { border-bottom: none; }
+.report-row .top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.report-row .who {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 12.5px;
+}
+.report-row .when {
+  color: rgba(0,0,0,0.5);
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+}
+.report-row .snippet {
+  color: rgba(0,0,0,0.7);
+  line-height: 1.45;
+  margin-top: 2px;
+}
+.report-row .links {
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.report-row .links a {
+  font-size: 11px;
+  background: rgba(0,0,0,0.06);
+  color: rgba(0,0,0,0.75);
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+.report-row .links a:hover {
+  background: rgba(0,0,0,0.12);
+  color: var(--ink);
+}
+
+/* Empty state */
+.empty {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+/* Expand hint */
+.expand-hint {
+  margin-top: 12px;
+  font-size: 11px;
+  color: rgba(0,0,0,0.45);
+  font-weight: 500;
+}
+.note.expanded .expand-hint { display: none; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="page-header">
+    <h1>CS AI Issue Bulletin</h1>
+    <p class="subtitle">
+      <span>#cs-ai-issue-reporting</span>
+      <span class="sep">·</span>
+      <span>Apr 13 – May 13, 2026</span>
+      <span class="sep">·</span>
+      <span>Snapshot May 13, 2026</span>
+    </p>
+    <p class="stat-line" id="stat-line"></p>
+  </header>
+
+  <div class="controls">
+    <input id="search" class="search-box" type="search" placeholder="Search…" />
+    <div class="chip-group" id="status-chips">
+      <button class="chip active" data-filter="all">All</button>
+      <button class="chip" data-filter="urgent">Urgent</button>
+      <button class="chip" data-filter="open">Open</button>
+      <button class="chip" data-filter="resolved">Resolved</button>
+    </div>
+    <select id="sort" class="sort-select">
+      <option value="newest">Newest first</option>
+      <option value="count">Most reported</option>
+      <option value="oldest">Oldest first</option>
+      <option value="urgent">Urgent first</option>
+    </select>
+  </div>
+
+  <div id="board" class="board"></div>
+</div>
+
+<script>
+// =================================================================
+// EMBEDDED SNAPSHOT DATA — same as before
+// =================================================================
+const CLUSTERS = [
+  {
+    title: "Incorrect refund amount or scope",
+    description: "Ashley processes a refund — but for the wrong amount, or refunds a transaction that was actually declined / shouldn't have been refunded, or cancels more than the customer requested.",
+    fix: "Partially resolved. Ashley has been updated to recognize failed/declined transactions and to take note of pending payments before refunding. Resolution depends on the specific edge case — newer reports still come in.",
+    status: "partial",
+    reports: [
+      { date: "2026-05-04", reporter: "Patriz Brigoli", urgent: true, resolved: false,
+        snippet: "Customer requested to cancel the subscription, but Ashley canceled both the subscription and the order.",
+        links: ["https://raicom.kustomerapp.com/app/customers/69f803e9b32644c3cac74599/event/69f80b889ce2db1544b0c617"] },
+      { date: "2026-05-02", reporter: "Leizel Cabilan", urgent: false, resolved: false,
+        snippet: "Customer thought she was charged 3x and wanted $206 refunded. Ashley refunded extras instead of explaining the charges.",
+        links: ["https://raicom.kustomerapp.com/app/customers/68b1161b0cffba04ad41204d/event/69f4b0ba9ce2db1544961f46"] },
+      { date: "2026-04-30", reporter: "Leizel Cabilan", urgent: false, resolved: true,
+        snippet: "Customer requested $87.95 refund. Ashley processed it even though the amount was declined due to insufficient funds — order became fully refunded and canceled.",
+        links: ["https://raicom.kustomerapp.com/app/customers/69673a6d835e50825935b31f/event/69e8687f9ce2db15444b9a0f"] },
+      { date: "2026-04-29", reporter: "Leizel Cabilan", urgent: false, resolved: false,
+        snippet: "Ashley refunded $59.95 instead of just $47.95 for the 2 items (line-item removal issue).",
+        links: ["https://raicom.kustomerapp.com/app/customers/69f0dab340715e6f00883e90/event/69f0e04b9ce2db15443f84ad"] },
+      { date: "2026-04-27", reporter: "Shai", urgent: false, resolved: true,
+        snippet: "Ashley refunded an order, but the one-time-offer payment was still pending — order total became $0.",
+        links: ["https://raicom.kustomerapp.com/app/customers/69ef7bb8d2643f8cfa722fc0/event/69ef7d079ce2db154490580b"] }
+    ]
+  },
+  {
+    title: "Pause subscription escalated even though already processed",
+    description: "Ashley escalates pause requests to a human, claiming an error, when the subscription has actually been paused successfully via the Seal API.",
+    fix: "Resolved — Diego deployed a fix. Full subscription data (including PAUSED status and pause start/end dates) is now included in the API response so Ashley can detect successful pauses. An updated fix was deployed after additional reports.",
+    status: "resolved",
+    reports: [
+      { date: "2026-04-18", reporter: "Leizel Cabilan", urgent: false, resolved: true,
+        snippet: "Ashley escalated to manually pause the membership, but the pause was already processed.",
+        links: ["https://raicom.kustomerapp.com/app/customers/6999f5ac36177e23697c2f9d/event/69e267fe9ce2db15444dcf32"] },
+      { date: "2026-04-14", reporter: "Beth Pareja", urgent: false, resolved: true,
+        snippet: "Customer requested to change pause from 2 months to 3 months. Subscription was already paused for 3 months — escalation could have been avoided.",
+        links: ["https://raicom.kustomerapp.com/app/customers/69dd61009fea7990622ca6e6/event/69dd62289ce2db154490b04d"] },
+      { date: "2026-04-14", reporter: "Patriz Brigoli (added in thread)", urgent: false, resolved: true,
+        snippet: "Additional pause-already-processed ticket.",
+        links: ["https://raicom.kustomerapp.com/app/customers/69b77ce75349b5a572699fa5/event/69dd27269ce2db15446c4a9d"] },
+      { date: "2026-04-15", reporter: "Patriz Brigoli (added in thread)", urgent: false, resolved: true,
+        snippet: "Additional pause-already-processed ticket.",
+        links: ["https://raicom.kustomerapp.com/app/customers/689fb8fe5e96be3758de00f2/event/69dece9a9ce2db1544127432"] },
+      { date: "2026-04-15", reporter: "Julio Romero Jr (added in thread)", urgent: false, resolved: true,
+        snippet: "Additional pause-already-processed ticket.",
+        links: ["https://raicom.kustomerapp.com/app/customers/698e82f3a1d8fe91587b8fd3/event/69df09579ce2db154421aa3b"] },
+      { date: "2026-04-16", reporter: "Julio Romero Jr (added in thread)", urgent: false, resolved: true,
+        snippet: "Ashley escalated saying she got an error pausing the subscription but it was paused properly.",
+        links: ["https://raicom.kustomerapp.com/app/customers/699a1fda33d2d4b29ee97f54/event/69e2b0959ce2db15447bbd4f"] }
+    ]
+  },
+  {
+    title: "Feedback SMS triggered before order is delivered",
+    description: "Customers get an automated SMS asking for product feedback while the order is still in transit or not yet received.",
+    fix: "No documented fix yet. Ryan escalated to Sean for SMS auto-responder review. Suggested timing change: trigger only after tracking status is 'Delivered' (with possible 'a few days/weeks after delivered' buffer).",
+    status: "open",
+    reports: [
+      { date: "2026-04-24", reporter: "Julio Romero Jr", urgent: false, resolved: false,
+        snippet: "SMS asking for feedback triggered while the order was still in transit. Should it be sent days/weeks after delivery?",
+        links: ["https://raicom.kustomerapp.com/app/customers/69c7251976b184f6e8124127/event/69eaa94a9ce2db15443b28c6"] },
+      { date: "2026-04-22", reporter: "Zwingli Diamond", urgent: false, resolved: false,
+        snippet: "Ashley sent feedback request before the customer received the package. Should trigger only on tracking status 'Delivered'.",
+        links: ["https://raicom.kustomerapp.com/app/customers/69c54fccef60c98125c5fe6b/event/69e8dcf09ce2db15446666a7"] }
+    ]
+  },
+  {
+    title: "Ashley sends incorrect product / shipping info",
+    description: "Ashley tells customers things that are factually wrong about products or fulfillment — e.g. that all orders ship from the US warehouse, or that a product comes in bottles when it ships in pouches.",
+    fix: "No documented fix yet. Multiple reports for the warehouse claim — including a follow-up where Ashley said an order with China Post tracking 'ships from the US.'",
+    status: "open",
+    reports: [
+      { date: "2026-05-09", reporter: "Dianne (added in thread)", urgent: false, resolved: false,
+        snippet: "Ashley said order is in transit with China Post and that all orders ship from the US.",
+        links: ["https://raicom.kustomerapp.com/app/customers/69f4d5be4059965ecb75d2f7/event/69fd34309ce2db15442c2763"] },
+      { date: "2026-04-30", reporter: "Dianne (added in thread)", urgent: false, resolved: false,
+        snippet: "Additional warehouse-misinfo ticket.",
+        links: ["https://raicom.kustomerapp.com/app/customers/69aa857ffc11ccc071724975/event/69f3225a9ce2db1544d726e5"] },
+      { date: "2026-04-25", reporter: "Dianne", urgent: false, resolved: false,
+        snippet: "Ashley telling customers that *all* orders ship from the US warehouse.",
+        links: [
+          "https://raicom.kustomerapp.com/app/customers/69c71aec68691d2cfb9f2f7f/event/69eb033c9ce2db15445112db",
+          "https://raicom.kustomerapp.com/app/customers/69e7bca4cf0a577bfe739372/event/69e8c38a9ce2db154457d319"
+        ] },
+      { date: "2026-04-15", reporter: "Zwingli Diamond", urgent: false, resolved: false,
+        snippet: "Ashley said no return is needed and offered a 10% refund — but the product is not from our store.",
+        links: ["https://raicom.kustomerapp.com/app/customers/69b13d6f7083704cc12a7133/event/69de80f79ce2db1544e87665"] },
+      { date: "2026-04-07", reporter: "Dianne (historical context)", urgent: false, resolved: false,
+        snippet: "Ashley said Vitamin D3 & K2 comes in bottles, but it ships in a pouch/pack.",
+        links: ["https://raicom.kustomerapp.com/app/customers/69c679d4be02070923dc4b35/event/69d256e960b5fbedeb95f026"] }
+    ]
+  },
+  {
+    title: "Support tool card out of sync with subscription state",
+    description: "The support tool / Kustomer card shows a subscription as 'Active' when it has actually been cancelled successfully.",
+    fix: "Workaround: force sync the subscription (the circle-arrows / refresh action on the card). Sean noted the underlying cause is likely Seal state desync or a missed Seal webhook. Root-cause investigation in progress.",
+    status: "partial",
+    reports: [
+      { date: "2026-05-13", reporter: "Martin Henrick Bombon", urgent: false, resolved: false,
+        snippet: "Initially thought Ashley was failing to cancel — but the subscription IS cancelled, the support tool card just shows 'Active'.",
+        links: [
+          "https://raicom.kustomerapp.com/app/customers/69dd88b81302bfbdad84e638/event/6a0270410407ca63b8db1106",
+          "https://raicom.kustomerapp.com/app/customers/69def1a8c80be8c94ad0ff30/event/6a0270c70407ca63b8db6f9d",
+          "https://raicom.kustomerapp.com/app/customers/69c71e78fd0f2e24919522c8/event/6a03c1130407ca63b8610c10"
+        ] }
+    ]
+  },
+  {
+    title: "Unnecessary escalation for tasks AI could handle",
+    description: "Ashley/Iris escalate tickets to the CS team for tasks they were actually able to complete, or for situations that could be handled automatically.",
+    fix: "Mixed status. Iris feedback-merge case has been included so Iris can respond directly. VM (voicemail) tickets are planned to be reduced. The $150 refund max-cap escalation is intended behavior but flagged for review.",
+    status: "partial",
+    reports: [
+      { date: "2026-04-24", reporter: "Beth Pareja", urgent: false, resolved: false,
+        snippet: "Sample VM (voicemail) tickets being escalated by Ashley to the CS team (5 tickets).",
+        links: [
+          "https://raicom.kustomerapp.com/app/customers/69ea80224c190cd9a5c4a3c6/event/69ea8022e4de1c222cc31898",
+          "https://raicom.kustomerapp.com/app/customers/69ea83593bdfc47b56c0d708/event/69ea83591fc7264133d6ad10",
+          "https://raicom.kustomerapp.com/app/customers/69c52017df3c94df5bae6684/event/69ea87e435344bfdc5fbec49",
+          "https://raicom.kustomerapp.com/app/customers/69bcfd33f5629673f8c2c203/event/69ea8afa4412b0e93235e4c9",
+          "https://raicom.kustomerapp.com/app/customers/69c52017df3c94df5bae6684/event/69ea8ba7a5852d1b05e20467"
+        ] },
+      { date: "2026-04-17", reporter: "Julio Romero Jr", urgent: false, resolved: false,
+        snippet: "Ashley escalated a refund for double-check, but processed it properly. Cause: $150 max refund cap was hit. Under review for improvement.",
+        links: ["https://raicom.kustomerapp.com/app/customers/69a040e32247abab72324e44/event/69dbd1af9ce2db154411f1bb"] },
+      { date: "2026-04-17", reporter: "Zwingli Diamond", urgent: false, resolved: true,
+        snippet: "Customer feedback ticket not merged on account, only a note from Iris. (Plus 2 more added in thread.)",
+        links: [
+          "https://raicom.kustomerapp.com/app/customers/69e11b7dae80229f31f203a8/event/69e11b7d9ce2db1544ced7fa",
+          "https://raicom.kustomerapp.com/app/customers/69e148c64a678c0a6fae575a/event/69e148c69ce2db1544eae3cc",
+          "https://raicom.kustomerapp.com/app/customers/69e170c052ff2f2eaba1ab25/event/69e170c09ce2db1544016ea9"
+        ] }
+    ]
+  },
+  {
+    title: "Ashley continues follow-ups after customer requests to stop",
+    description: "Customer has indicated multiple times that they do not need assistance, but Ashley keeps sending follow-up messages — escalating into customer frustration.",
+    fix: "No fix documented yet.",
+    status: "open",
+    reports: [
+      { date: "2026-05-02", reporter: "Ann", urgent: false, resolved: false,
+        snippet: "Customer indicated multiple times they did not need assistance; Ashley continued sending follow-ups. Customer asked her to stop.",
+        links: ["https://raicom.kustomerapp.com/app/customers/69ad734a09f4dce7aab0f1ff/event/69f5db089ce2db15440a0ba1"] }
+    ]
+  },
+  {
+    title: "35% lifetime discount widget error",
+    description: "Error when trying to process the 35% lifetime discount through the standard widget.",
+    fix: "Workaround: apply the discount through the Seal website instead. Diego noted this scenario usually happens when the customer has changed their credit card info — the widget can't process the change but Seal can.",
+    status: "partial",
+    reports: [
+      { date: "2026-04-30", reporter: "Dianne", urgent: false, resolved: false,
+        snippet: "Getting an error when trying to process the 35% lifetime discount.",
+        links: ["https://raicom.kustomerapp.com/app/customers/6921b885b13aa906a6dbadd7/event/69f2be5f9ce2db1544ac6d16"] }
+    ]
+  },
+  {
+    title: "Old tickets reopening due to 1-year snooze expiring",
+    description: "Tickets from a year ago are being reopened because the old snooze duration was applied for exactly one year.",
+    fix: "Resolved. Rico backtracked the 1-year snooze and updated it to avoid the auto-unsnooze. Reporters were told to re-snooze any tickets currently assigned to them.",
+    status: "resolved",
+    reports: [
+      { date: "2026-05-12", reporter: "Shai", urgent: false, resolved: true,
+        snippet: "Tickets from a year ago are reopening — 2nd time getting assigned tickets with this concern.",
+        links: ["https://raicom.kustomerapp.com/app/customers/67be0cd932572c9ab7ed944c/event/6814d5e8fa9aa75ca441bce4"] }
+    ]
+  },
+  {
+    title: "Stuck tickets in inbox (not snoozed after Ashley response)",
+    description: "~90 tickets accumulated open in the inbox. Many were merged tickets that weren't snoozed; others had Ashley responses but weren't snoozed so they stayed in the inbox. Some were also not routed to the CS inbox at all.",
+    fix: "Partial: Rico cleaned up the open merged tickets. Recurring root-cause fix still being investigated. Beth normally cleans these up daily but was on rest days.",
+    status: "partial",
+    reports: [
+      { date: "2026-05-12", reporter: "Ann", urgent: false, resolved: false,
+        snippet: "~90 open tickets — most already responded to by Ashley but not snoozed; others not routed to CS inbox.",
+        links: [] }
+    ]
+  },
+  {
+    title: "Ashley confuses order numbers in the conversation",
+    description: "When a customer has multiple orders, Ashley keeps referencing the wrong order number, causing confusion.",
+    fix: "No fix documented yet.",
+    status: "open",
+    reports: [
+      { date: "2026-04-18", reporter: "Leizel Cabilan", urgent: false, resolved: false,
+        snippet: "Customer message was about order TN87865083 (already delivered, wants to return), but Ashley kept talking about order TN82842443.",
+        links: ["https://raicom.kustomerapp.com/app/customers/69ad861885fafef646b7b87b/event/69e111b39ce2db1544c7f0d5"] }
+    ]
+  },
+  {
+    title: "Non-standard retention offers (intentional A/B test)",
+    description: "Ashley is offering retention deals outside the standard menu (e.g. 35% lifetime discount + 3-month pause, when the standard options are 6-month pause OR 20% lifetime).",
+    fix: "Not a bug — this is intentional. Ryan and Rico are testing retention strategies to optimize customer satisfaction and business metrics. Expect non-standard offers for the next few weeks.",
+    status: "info",
+    reports: [
+      { date: "2026-04-14", reporter: "Beth Pareja", urgent: false, resolved: false,
+        snippet: "Ashley offered a 3-month pause along with a 35% lifetime discount — outside the standard retention options.",
+        links: ["https://raicom.kustomerapp.com/app/customers/6988daf7764e0ea83809049b/event/69dd71fd9ce2db154499f096"] }
+    ]
+  }
+];
+const SNAPSHOT_DATE = "2026-05-13";
+
+// =================================================================
+// Rendering
+// =================================================================
+let filterStatus = 'all';
+let sortBy = 'newest';
+let searchTerm = '';
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+function parseDate(s) {
+  if (!s) return null;
+  return new Date(s + 'T00:00:00');
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+function humanAge(d, asOf) {
+  if (!d) return '';
+  const now = asOf || new Date();
+  const days = Math.floor((now.getTime() - d.getTime()) / (86400000));
+  if (days <= 0) return 'today';
+  if (days === 1) return '1d';
+  if (days < 7) return days + 'd';
+  if (days < 30) return Math.floor(days / 7) + 'w';
+  return Math.floor(days / 30) + 'mo';
+}
+function statusLabel(s) {
+  if (s === 'resolved') return 'Resolved';
+  if (s === 'partial') return 'Partial fix';
+  if (s === 'info') return 'Not a bug';
+  return 'Open';
+}
+function colorClass(c) {
+  // Urgent trumps everything
+  if (c.anyUrgent) return 'color-urgent';
+  if (c.status === 'resolved') return 'color-resolved';
+  if (c.status === 'partial') return 'color-partial';
+  if (c.status === 'info') return 'color-info';
+  return 'color-open';
+}
+function deterministicRotation(idx) {
+  // Pseudo-random but stable, between -1.5 and 1.5 degrees
+  const seeds = [1.1, -0.7, 0.5, -1.3, 0.9, -0.4, 1.4, -1.0, 0.3, -0.9, 1.2, -0.5];
+  return seeds[idx % seeds.length];
+}
+
+function aggregate(c, idx) {
+  const dates = c.reports.map(r => parseDate(r.date)).filter(Boolean);
+  const firstDate = dates.length ? new Date(Math.min(...dates.map(d => d.getTime()))) : null;
+  const lastDate = dates.length ? new Date(Math.max(...dates.map(d => d.getTime()))) : null;
+  const anyUrgent = c.reports.some(r => r.urgent);
+  return Object.assign({}, c, {
+    count: c.reports.length,
+    firstDate, lastDate, anyUrgent,
+    _idx: idx,
+  });
+}
+
+function updateStatLine() {
+  const totalReports = CLUSTERS.reduce((s, c) => s + c.reports.length, 0);
+  const open = CLUSTERS.filter(c => c.status === 'open').length;
+  const partial = CLUSTERS.filter(c => c.status === 'partial').length;
+  const resolved = CLUSTERS.filter(c => c.status === 'resolved').length;
+  const urgent = CLUSTERS.filter(c => c.reports.some(r => r.urgent)).length;
+  document.getElementById('stat-line').innerHTML =
+    `<strong>${totalReports}</strong> reports across <strong>${CLUSTERS.length}</strong> issues` +
+    `<span class="dot">·</span><strong>${urgent}</strong> urgent` +
+    `<span class="dot">·</span><strong>${open}</strong> open` +
+    `<span class="dot">·</span><strong>${partial}</strong> partial fix` +
+    `<span class="dot">·</span><strong>${resolved}</strong> resolved`;
+}
+
+function render() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+
+  const aggregated = CLUSTERS.map(aggregate);
+
+  let displayed = aggregated.filter(c => {
+    if (filterStatus === 'urgent' && !c.anyUrgent) return false;
+    if (filterStatus === 'open' && (c.status === 'resolved' || c.status === 'info')) return false;
+    if (filterStatus === 'resolved' && c.status !== 'resolved') return false;
+    if (searchTerm) {
+      const hay = (c.title + ' ' + c.description + ' ' + c.fix + ' ' +
+        c.reports.map(r => r.reporter + ' ' + r.snippet).join(' ')).toLowerCase();
+      if (!hay.includes(searchTerm)) return false;
+    }
+    return true;
+  });
+
+  if (sortBy === 'count') {
+    displayed.sort((a, b) => b.count - a.count || (b.lastDate?.getTime() || 0) - (a.lastDate?.getTime() || 0));
+  } else if (sortBy === 'newest') {
+    displayed.sort((a, b) => (b.lastDate?.getTime() || 0) - (a.lastDate?.getTime() || 0));
+  } else if (sortBy === 'oldest') {
+    displayed.sort((a, b) => (a.firstDate?.getTime() || 0) - (b.firstDate?.getTime() || 0));
+  } else if (sortBy === 'urgent') {
+    displayed.sort((a, b) => (b.anyUrgent ? 1 : 0) - (a.anyUrgent ? 1 : 0) || (b.lastDate?.getTime() || 0) - (a.lastDate?.getTime() || 0));
+  }
+
+  if (!displayed.length) {
+    board.innerHTML = '<div class="empty">No issues match the current filter.</div>';
+    return;
+  }
+  displayed.forEach((c, i) => board.appendChild(renderNote(c, i)));
+}
+
+function renderNote(c, displayIdx) {
+  const note = document.createElement('article');
+  let cls = 'note ' + colorClass(c);
+  if (c.status === 'resolved') cls += ' is-resolved';
+  note.className = cls;
+  const rot = deterministicRotation(c._idx);
+  note.style.transform = `rotate(${rot}deg)`;
+
+  const asOf = parseDate(SNAPSHOT_DATE);
+  const dateLabel = c.lastDate ? `${fmtDate(c.lastDate)} · ${humanAge(c.lastDate, asOf)} ago` : '—';
+
+  let head = `
+    <div class="note-head">
+      <h3 class="note-title">${esc(c.title)}</h3>
+      <span class="note-pill">${statusLabel(c.status)}</span>
+    </div>
+    <div class="note-meta">
+      <span class="count">${c.count} report${c.count !== 1 ? 's' : ''}</span>
+      <span class="meta-dot"></span>
+      <span>${esc(dateLabel)}</span>
+    </div>
+  `;
+
+  // Hidden body
+  let reportsHtml = '';
+  if (c.reports.length) {
+    const sorted = [...c.reports].sort((a, b) =>
+      (parseDate(b.date)?.getTime() || 0) - (parseDate(a.date)?.getTime() || 0));
+    reportsHtml = `
+      <div class="reports">
+        <div class="reports-heading">Individual reports</div>
+        ${sorted.map(r => {
+          const d = parseDate(r.date);
+          const dateStr = d ? `${fmtDate(d)} · ${humanAge(d, asOf)} ago` : '—';
+          const linksHtml = (r.links || []).length
+            ? r.links.map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Kustomer${r.links.length > 1 ? ' #' + (i+1) : ''} ↗</a>`).join('')
+            : '<span style="font-size:11px;color:rgba(0,0,0,0.4);font-style:italic;">no link</span>';
+          return `
+            <div class="report-row">
+              <div class="top">
+                <span class="who">${esc(r.reporter)}</span>
+                <span class="when">${esc(dateStr)}</span>
+              </div>
+              <div class="snippet">${esc(r.snippet)}</div>
+              <div class="links">${linksHtml}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  const body = `
+    <div class="note-body">
+      ${c.description ? `<p class="note-desc">${esc(c.description)}</p>` : ''}
+      ${c.fix ? `
+        <div class="fix-section">
+          <span class="fix-label">${c.status === 'info' ? 'Note' : 'Fix / Workaround'}</span>
+          <div class="fix-text">${esc(c.fix)}</div>
+        </div>
+      ` : ''}
+      ${reportsHtml}
+    </div>
+    <div class="expand-hint">Tap to view details</div>
+  `;
+
+  note.innerHTML = head + body;
+
+  note.addEventListener('click', (e) => {
+    // Don't toggle when clicking a link
+    if (e.target.tagName === 'A') return;
+    note.classList.toggle('expanded');
+  });
+
+  return note;
+}
+
+function wireUp() {
+  document.getElementById('search').addEventListener('input', (e) => {
+    searchTerm = e.target.value.trim().toLowerCase();
+    render();
+  });
+  document.querySelectorAll('#status-chips .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#status-chips .chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      filterStatus = chip.getAttribute('data-filter');
+      render();
+    });
+  });
+  document.getElementById('sort').addEventListener('change', (e) => {
+    sortBy = e.target.value;
+    render();
+  });
+}
+
+wireUp();
+updateStatLine();
+render();
+</script>
+</body>
+</html>
